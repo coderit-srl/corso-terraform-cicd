@@ -8,6 +8,7 @@ on:
       - '.github/workflows/terraform-plan.yml'
 
 permissions:
+  id-token: write
   contents: read
   pull-requests: write
 
