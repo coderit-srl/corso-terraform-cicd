@@ -1,3 +1,9 @@
+locals {
+  s3_bucket_name       = "${var.project_name}-${var.environment}-bucket"
+  lambda_function_name = "${var.project_name}-${var.environment}"
+  lambda_role_name     = "${var.project_name}-${var.environment}-role"
+}
+
 # Package Lambda source code
 data "archive_file" "lambda_zip" {
   type        = "zip"
@@ -7,7 +13,7 @@ data "archive_file" "lambda_zip" {
 
 # S3 Bucket for each environment
 resource "aws_s3_bucket" "app_bucket" {
-  bucket = var.s3_bucket_name
+  bucket = local.s3_bucket_name
 }
 
 resource "aws_s3_bucket_versioning" "app_bucket_versioning" {
@@ -30,7 +36,7 @@ resource "aws_s3_bucket_public_access_block" "app_bucket_pab" {
 
 # IAM role for Lambda
 resource "aws_iam_role" "lambda_role" {
-  name = "${var.lambda_function_name}-role"
+  name = local.lambda_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -50,14 +56,42 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Grant Lambda access to its S3 bucket
+resource "aws_iam_role_policy" "lambda_s3_access" {
+  name = "${local.lambda_function_name}-s3-access"
+  role = aws_iam_role.lambda_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ]
+      Resource = [
+        aws_s3_bucket.app_bucket.arn,
+        "${aws_s3_bucket.app_bucket.arn}/*"
+      ]
+    }]
+  })
+}
+
+# CloudWatch Log Group — created before Lambda to avoid race condition
+resource "aws_cloudwatch_log_group" "lambda_log_group" {
+  name              = "/aws/lambda/${local.lambda_function_name}"
+  retention_in_days = 7
+}
+
 # Lambda function
 resource "aws_lambda_function" "app_function" {
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  function_name    = var.lambda_function_name
+  function_name    = local.lambda_function_name
   role             = aws_iam_role.lambda_role.arn
-  handler          = var.lambda_handler
-  runtime          = var.lambda_runtime
+  handler          = "index.handler"
+  runtime          = "python3.13"
 
   environment {
     variables = {
@@ -68,12 +102,6 @@ resource "aws_lambda_function" "app_function" {
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic_execution,
-    aws_s3_bucket.app_bucket
+    aws_cloudwatch_log_group.lambda_log_group,
   ]
-}
-
-# CloudWatch Log Group for Lambda
-resource "aws_cloudwatch_log_group" "lambda_log_group" {
-  name              = "/aws/lambda/${aws_lambda_function.app_function.function_name}"
-  retention_in_days = 7
 }

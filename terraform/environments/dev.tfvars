@@ -1,10 +1,5 @@
-environment          = "dev"
-project_name         = "multi-env-demo"
-aws_region           = "eu-south-1"
-s3_bucket_name       = "multi-env-demo-dev-bucket"
-lambda_function_name = "multi-env-demo-dev"
-lambda_handler       = "index.handler"
-lambda_runtime       = "python3.11"
+environment  = "dev"
+project_name = "multi-env-demo"
 
 tags = {
   Environment = "dev"

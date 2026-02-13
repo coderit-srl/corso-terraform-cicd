@@ -64,16 +64,63 @@ resource "aws_iam_role_policy" "terraform_permissions" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "s3:*",
-        "lambda:*",
-        "iam:*",
-        "logs:*",
-        "cloudwatch:*"
-      ]
-      Resource = "*"
-    }]
+    Statement = [
+      {
+        Sid    = "TerraformStateAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.terraform_state.arn,
+          "${aws_s3_bucket.terraform_state.arn}/*"
+        ]
+      },
+      {
+        Sid    = "AppBuckets"
+        Effect = "Allow"
+        Action = ["s3:*"]
+        Resource = [
+          "arn:aws:s3:::multi-env-demo-*-bucket",
+          "arn:aws:s3:::multi-env-demo-*-bucket/*"
+        ]
+      },
+      {
+        Sid    = "LambdaFunctions"
+        Effect = "Allow"
+        Action = ["lambda:*"]
+        Resource = "arn:aws:lambda:${var.aws_region}:${var.aws_account_id}:function:multi-env-demo-*"
+      },
+      {
+        Sid    = "IAMRoles"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListInstanceProfilesForRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:GetRolePolicy",
+          "iam:PassRole",
+          "iam:TagRole",
+          "iam:UntagRole"
+        ]
+        Resource = "arn:aws:iam::${var.aws_account_id}:role/multi-env-demo-*"
+      },
+      {
+        Sid    = "CloudWatchLogs"
+        Effect = "Allow"
+        Action = ["logs:*"]
+        Resource = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/multi-env-demo-*"
+      }
+    ]
   })
 }

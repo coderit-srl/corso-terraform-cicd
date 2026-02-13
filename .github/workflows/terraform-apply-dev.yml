@@ -14,6 +14,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: terraform-dev
+  cancel-in-progress: false
+
 jobs:
   apply:
     runs-on: ubuntu-latest
@@ -41,8 +45,16 @@ jobs:
         working-directory: terraform
 
       - name: Terraform Plan
+        id: plan
         run: terraform plan -var-file="environments/dev.tfvars" -no-color -out="tfplan"
         working-directory: terraform
+
+      - name: Post Plan to Summary
+        run: |
+          echo '## Terraform Plan — Dev' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo '${{ steps.plan.outputs.stdout }}' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Terraform Apply
         run: terraform apply -no-color -auto-approve tfplan
