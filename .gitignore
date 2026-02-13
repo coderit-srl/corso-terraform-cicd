@@ -1,7 +1,8 @@
 # Terraform
 .terraform/
 **/.terraform/*
-.terraform.lock.hcl
+# Keep lock files for reproducible provider versions
+# .terraform.lock.hcl
 
 # State files
 *.tfstate
