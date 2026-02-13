@@ -116,10 +116,23 @@ resource "aws_iam_role_policy" "terraform_permissions" {
         Resource = "arn:aws:iam::${var.aws_account_id}:role/multi-env-demo-*"
       },
       {
-        Sid    = "CloudWatchLogs"
+        Sid    = "CloudWatchLogsDescribe"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:ListTagsLogGroup",
+          "logs:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "CloudWatchLogsManage"
         Effect = "Allow"
         Action = ["logs:*"]
-        Resource = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/multi-env-demo-*"
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/multi-env-demo-*",
+          "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/multi-env-demo-*:*"
+        ]
       }
     ]
   })
