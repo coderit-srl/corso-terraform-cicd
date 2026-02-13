@@ -1,0 +1,53 @@
+name: Terraform Apply - Dev
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'src/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform init -no-color
+        working-directory: terraform
+
+      - name: Terraform Plan
+        run: terraform plan -var-file="environments/dev.tfvars" -no-color -out="tfplan"
+        working-directory: terraform
+
+      - name: Terraform Apply
+        run: terraform apply -no-color -auto-approve tfplan
+        working-directory: terraform
+
+      - name: Export Outputs
+        run: terraform output -json > outputs.json
+        working-directory: terraform
+
+      - name: Upload Outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: dev-outputs
+          path: terraform/outputs.json
