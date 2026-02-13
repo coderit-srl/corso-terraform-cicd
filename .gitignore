@@ -22,6 +22,10 @@ override.tf.json
 *.tfvars.json
 # But keep environment-specific tfvars (no secrets in this project)
 !terraform/environments/*.tfvars
+!bootstrap/terraform.tfvars
+
+# Bootstrap uses local backend — commit its state so the team shares it
+!bootstrap/terraform.tfstate
 
 # Generated Lambda zip (built by archive_file data source)
 terraform/lambda.zip

@@ -3,7 +3,7 @@
 ## Overview
 A multi-environment Terraform project (dev/staging/prod) with GitHub Actions workflows demonstrating:
 - Infrastructure as Code (S3 + Lambda per environment)
-- S3 remote state backend with DynamoDB locking
+- S3 remote state backend with native S3 locking
 - Terraform workspaces + .tfvars for environment separation
 - GitHub Actions workflows with approval gates
 - Plan/Apply separation for safety
@@ -12,7 +12,7 @@ A multi-environment Terraform project (dev/staging/prod) with GitHub Actions wor
 
 ### AWS Resources
 - **Per environment**: S3 bucket + Lambda function with environment-specific tags and configurations
-- **Shared**: S3 bucket for Terraform state + DynamoDB table for state locking
+- **Shared**: S3 bucket for Terraform state (with native S3 lock files)
 
 ### Infrastructure Layout
 ```
@@ -41,7 +41,7 @@ A multi-environment Terraform project (dev/staging/prod) with GitHub Actions wor
 ## Implementation Steps
 
 1. **Initialize git repo** and GitHub Actions secrets setup
-2. **Create Terraform backend infrastructure** (S3 + DynamoDB) - one-time setup
+2. **Create Terraform backend infrastructure** (S3 bucket) - one-time setup
 3. **Write Terraform configuration** for S3 buckets and Lambda functions
 4. **Create GitHub Actions workflows**:
    - terraform-plan.yml: Runs on PRs, plans for all environments
@@ -64,7 +64,6 @@ A multi-environment Terraform project (dev/staging/prod) with GitHub Actions wor
 
 - S3: 5 GB free storage (3 buckets = ~1-2 GB total)
 - Lambda: 1M requests/month free (demo workload well under this)
-- DynamoDB: 25 GB free storage + read/write capacity units (state locking minimal usage)
 - All resources use minimal configuration to stay within free tier
 
 ## Deliverables

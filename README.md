@@ -9,7 +9,7 @@ This project demonstrates:
 - **Multi-Environment Setup**: Separate configuration per environment using workspaces and tfvars
 - **GitHub Actions CICD**: Automated plan and apply workflows
 - **Approval Gates**: Staging and production deployments require manual approval
-- **State Management**: Remote state stored in S3 with DynamoDB locking
+- **State Management**: Remote state stored in S3 with native S3 locking
 - **AWS Free Tier**: All resources fit within free tier limits
 
 ## Architecture
@@ -28,48 +28,42 @@ This project demonstrates:
 
 ### Shared Infrastructure (One-Time Setup)
 
-- **S3 Bucket**: Terraform state storage
-- **DynamoDB Table**: State locking
+- **S3 Bucket**: Terraform state storage (with native S3 lock files)
 
 ## Prerequisites
 
 1. **AWS Account**: Free tier eligible
 2. **GitHub Account**: With repository access
-3. **Terraform**: Installed locally (v1.6.0+)
+3. **Terraform**: Installed locally (v1.10+)
 4. **AWS CLI**: Installed locally (optional, for bootstrapping)
 
 ## Setup Instructions
 
 ### 1. Bootstrap AWS Backend (One-Time Only)
 
-First, create the S3 bucket and DynamoDB table for Terraform state. This must be done manually before the automation can work.
+First, create the S3 bucket for Terraform state. This must be done manually before the automation can work. State locking uses S3-native lock files (`use_lockfile = true`), so no DynamoDB table is needed.
 
 ```bash
 # Set your AWS account ID
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# Create S3 bucket for state
-aws s3 mb s3://terraform-state-demo-bucket --region us-east-1
+# Create S3 bucket for state (name must be globally unique)
+aws s3api create-bucket \
+  --bucket "terraform-state-${AWS_ACCOUNT_ID}" \
+  --region eu-south-1 \
+  --create-bucket-configuration LocationConstraint=eu-south-1
 
 # Enable versioning
 aws s3api put-bucket-versioning \
-  --bucket terraform-state-demo-bucket \
+  --bucket "terraform-state-${AWS_ACCOUNT_ID}" \
   --versioning-configuration Status=Enabled \
-  --region us-east-1
+  --region eu-south-1
 
 # Block public access
 aws s3api put-public-access-block \
-  --bucket terraform-state-demo-bucket \
+  --bucket "terraform-state-${AWS_ACCOUNT_ID}" \
   --public-access-block-configuration \
   "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-
-# Create DynamoDB table for state locking
-aws dynamodb create-table \
-  --table-name terraform-state-lock \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
-  --region us-east-1
 ```
 
 ### 2. Set Up AWS Credentials for GitHub Actions
@@ -126,7 +120,6 @@ Create a `policy.json` file with necessary permissions:
         "lambda:*",
         "iam:*",
         "logs:*",
-        "dynamodb:*",
         "cloudwatch:*"
       ],
       "Resource": "*"
@@ -136,15 +129,11 @@ Create a `policy.json` file with necessary permissions:
       "Action": [
         "s3:GetObject",
         "s3:PutObject",
-        "dynamodb:DescribeTable",
-        "dynamodb:GetItem",
-        "dynamodb:PutItem",
-        "dynamodb:DeleteItem"
+        "s3:DeleteObject"
       ],
       "Resource": [
-        "arn:aws:s3:::terraform-state-demo-bucket",
-        "arn:aws:s3:::terraform-state-demo-bucket/*",
-        "arn:aws:dynamodb:us-east-1:ACCOUNT_ID:table/terraform-state-lock"
+        "arn:aws:s3:::terraform-state-ACCOUNT_ID",
+        "arn:aws:s3:::terraform-state-ACCOUNT_ID/*"
       ]
     }
   ]
@@ -274,7 +263,7 @@ terraform apply -var-file="environments/dev.tfvars"
 ### State Management
 
 - Terraform state is stored in S3 with encryption enabled
-- DynamoDB table provides state locking to prevent concurrent modifications
+- State locking uses S3-native lock files (`.tflock`) — no DynamoDB needed
 - **DO NOT** commit `.tfstate` files to Git
 - **DO NOT** manually modify state files
 
@@ -293,7 +282,6 @@ Actual AWS credentials come from GitHub Actions via OIDC, not from secrets.
 All resources are configured to stay within AWS free tier:
 - S3: 5 GB free storage (3 buckets ~1-2 GB total)
 - Lambda: 1M requests/month free
-- DynamoDB: 25 GB free, minimal read/write capacity
 - CloudWatch Logs: 5 GB free ingestion
 
 ### Cost Monitoring
@@ -307,7 +295,7 @@ Monitor your AWS usage in the console:
 
 ### Issue: "terraform init" fails with backend errors
 
-**Solution**: Ensure the S3 bucket and DynamoDB table exist and are properly configured.
+**Solution**: Ensure the S3 bucket exists and is properly configured.
 
 ### Issue: Lambda code changes not detected by Terraform
 
