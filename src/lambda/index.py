@@ -13,6 +13,7 @@ def handler(event, context):
         'statusCode': 200,
         'body': json.dumps({
             'message': f'Hello from {environment} environment!',
+            'version': '1.1.0',
             'timestamp': datetime.utcnow().isoformat(),
             'environment': environment,
             's3_bucket': s3_bucket,
