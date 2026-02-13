@@ -4,6 +4,8 @@ on:
   pull_request:
     branches:
       - main
+      - release/staging
+      - release/production
     paths:
       - 'terraform/**'
       - 'src/**'
@@ -19,11 +21,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  resolve-environments:
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.set.outputs.environments }}
+    steps:
+      - name: Set environment matrix
+        id: set
+        run: |
+          case "${{ github.base_ref }}" in
+            release/staging)    echo 'environments=["staging"]' >> "$GITHUB_OUTPUT" ;;
+            release/production) echo 'environments=["prod"]' >> "$GITHUB_OUTPUT" ;;
+            *)                  echo 'environments=["dev","staging","prod"]' >> "$GITHUB_OUTPUT" ;;
+          esac
+
   plan:
     runs-on: ubuntu-latest
+    needs: resolve-environments
     strategy:
       matrix:
-        environment: [dev, staging, prod]
+        environment: ${{ fromJson(needs.resolve-environments.outputs.environments) }}
     steps:
       - uses: actions/checkout@v4
 
