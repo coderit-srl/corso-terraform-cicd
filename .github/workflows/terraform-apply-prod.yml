@@ -1,6 +1,13 @@
 name: Terraform Apply - Production
 
 on:
+  push:
+    branches:
+      - release/production
+    paths:
+      - 'terraform/**'
+      - 'src/**'
+      - '.github/workflows/terraform-apply-prod.yml'
   workflow_dispatch:
 
 permissions:

@@ -1,6 +1,13 @@
 name: Terraform Apply - Staging
 
 on:
+  push:
+    branches:
+      - release/staging
+    paths:
+      - 'terraform/**'
+      - 'src/**'
+      - '.github/workflows/terraform-apply-staging.yml'
   workflow_dispatch:
 
 permissions:
