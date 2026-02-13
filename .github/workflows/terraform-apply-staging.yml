@@ -48,7 +48,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: staging-tfplan
-          path: terraform/tfplan
+          path: |
+            terraform/tfplan
+            terraform/lambda.zip
 
   approval:
     runs-on: ubuntu-latest
