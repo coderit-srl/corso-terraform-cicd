@@ -29,8 +29,16 @@ jobs:
         working-directory: terraform
 
       - name: Terraform Plan
+        id: plan
         run: terraform plan -var-file="environments/prod.tfvars" -no-color -out="tfplan"
         working-directory: terraform
+
+      - name: Post Plan to Summary
+        run: |
+          echo '## Terraform Plan — Production' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo '${{ steps.plan.outputs.stdout }}' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Plan
         uses: actions/upload-artifact@v4
