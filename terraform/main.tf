@@ -104,4 +104,8 @@ resource "aws_lambda_function" "app_function" {
     aws_iam_role_policy_attachment.lambda_basic_execution,
     aws_cloudwatch_log_group.lambda_log_group,
   ]
+
+  tags = {
+    Project = "cicd"
+  }
 }
